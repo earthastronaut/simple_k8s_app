@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "app-fun.fullname" . }}
+  labels:
+    {{- include "app-fun.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.externalPort }}
+      targetPort: {{ .Values.service.internalPort }}
+      nodePort: {{ .Values.services.nodePort }}
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "app-fun.selectorLabels" . | nindent 4 }}
