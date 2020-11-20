@@ -21,5 +21,6 @@ RUN pip install --no-cache-dir \
 
 COPY main.py .
 
-CMD [ "uvicorn", "--reload", "--host=localhost", "--port=8080", "main:app" ]
 EXPOSE 8080
+
+CMD [ "uvicorn", "--reload", "--host=0.0.0.0", "--port=8080", "main:app" ]
