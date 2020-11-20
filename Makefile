@@ -13,7 +13,7 @@ HELM=helm --debug --kube-context ${KUBE_CONTEXT} --namespace ${NAMESPACE}
 
 # derived
 HELM_CHART=${APP_NAME}
-NAMESPACE=default
+NAMESPACE=example
 DOCKER_IMAGE_TAGGED=${DOCKER_IMAGE}:${DOCKER_TAG}
 
 POD_SELECTOR_LABELS=app.kubernetes.io/name=${APP_NAME},app.kubernetes.io/instance=${APP_NAME}
@@ -35,6 +35,23 @@ endef
 # ############################################################################ #
 # Commands
 # ############################################################################ #
+
+namespace:
+	-kubectl --context docker-desktop create namespace example
+
+install: namespace
+	helm --kube-context docker-desktop --namespace example install -f deploy/local/values.yaml appfun ./charts/app-fun
+
+uninstall:
+	helm --kube-context docker-desktop --namespace example uninstall appfun
+	kubectl --context docker-desktop delete namespace example
+
+stat:
+	kubectl --context docker-desktop --namespace example get all
+
+
+
+
 
 build-docker:
 	docker build \
