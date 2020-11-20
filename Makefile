@@ -2,122 +2,117 @@
 # Variables
 # ############################################################################ #
 
-# defined
 APP_NAME=app-fun
+NAMESPACE=app-fun
+HELM_RELEASE=app-fun-release
+HELM_CHART=charts/app-fun
+HELM_VALUES_FILE:=deploy/local/values.yaml
 KUBE_CONTEXT=docker-desktop
 DOCKER_IMAGE=app-fun
 DOCKER_TAG=latest
+DOCKER_CONTAINER_NAME=app-fun-container
 
 # commands
 HELM=helm --debug --kube-context ${KUBE_CONTEXT} --namespace ${NAMESPACE}
+KUBECTL=kubectl --context ${KUBE_CONTEXT}
+KUBECTL_NAMESPACE=kubectl --context ${KUBE_CONTEXT} --namespace ${NAMESPACE}
+KUBECTL_GET_POD_NAME=${KUBECTL_NAMESPACE} get pods -l "app.kubernetes.io/instance=${HELM_RELEASE},app.kubernetes.io/name=${APP_NAME}" -o jsonpath="{.items[0].metadata.name}"
 
 # derived
-HELM_CHART=${APP_NAME}
-NAMESPACE=example
 DOCKER_IMAGE_TAGGED=${DOCKER_IMAGE}:${DOCKER_TAG}
-
-POD_SELECTOR_LABELS=app.kubernetes.io/name=${APP_NAME},app.kubernetes.io/instance=${APP_NAME}
-# POD_NAME=$(shell kubectl get pods --namespace ${NAMESPACE} -l "${POD_SELECTOR_LABELS}" -o jsonpath="{.items[0].metadata.name}")
-# 
-# NODE_PORT=$(shell kubectl get --namespace app-fun -o jsonpath="{.spec.ports[0].nodePort}" services app-fun)
-# NODE_IP=$(shell kubectl get nodes --namespace app-fun -o jsonpath="{.items[0].status.addresses[0].address}")
-
-define SET_POD_NAME
-	$(eval POD_NAME=$(shell kubectl get pods --namespace ${NAMESPACE} -l "${POD_SELECTOR_LABELS}" -o jsonpath="{.items[0].metadata.name}"))
+define SET_POD_NAME # evaluate this after the pod is running
+	$(eval POD_NAME=$(shell ${KUBECTL_GET_POD_NAME}))
 endef
+define HELPER_FILE_TEXT
+# Helper functions for ${APP_NAME} release ${HELM_RELEASE}
 
-define SET_CONTAINER_PORT
-	${SET_POD_NAME}
-	$(eval CONTAINER_PORT=$(shell kubectl get pod --namespace ${NAMESPACE} ${POD_NAME} -o jsonpath="{.spec.containers[0].ports[0].containerPort}"))
+# env
+export POD_NAME=$$(${KUBECTL_GET_POD_NAME})
+
+# aliases
+alias k-describe-pod="${KUBECTL} --namespace ${NAMESPACE} describe pod $${POD_NAME}"
+alias k-app="${KUBECTL_NAMESPACE}"
+
 endef
-
+export HELPER_FILE_TEXT
 
 # ############################################################################ #
 # Commands
 # ############################################################################ #
 
-namespace:
-	-kubectl --context docker-desktop create namespace example
-
-install: namespace
-	helm --kube-context docker-desktop --namespace example install -f deploy/local/values.yaml appfun ./charts/app-fun
-
-uninstall:
-	helm --kube-context docker-desktop --namespace example uninstall appfun
-	kubectl --context docker-desktop delete namespace example
-
-stat:
-	kubectl --context docker-desktop --namespace example get all
-
-
-
-
-
-build-docker:
-	docker build \
-		--rm \
-		--tag ${DOCKER_IMAGE_TAGGED} \
-		-f Dockerfile \
-		.
-
-build-helm:
-ifeq ($(shell kubectl get namespace | grep ${NAMESPACE}), 1)
-	kubectl create namespace ${NAMESPACE}
+# Create the namespace if it does not exists
+create-namespace:
+ifeq ("$(shell ${KUBECTL} get namespaces | grep ${NAMESPACE})", "")
+	${KUBECTL} create namespace ${NAMESPACE}
 else
-	@echo "Namespace '${NAMESPACE}' exists."
+	@echo "namespace ${NAMESPACE} found"
 endif
-	${HELM} install ${HELM_CHART} ./charts/${HELM_CHART}
 
-build: build-docker build-helm
+# Delete the namespace if it exists
+delete-namespace:
+ifeq ("$(shell ${KUBECTL} get namespaces | grep ${NAMESPACE})", "")
+	@echo "namespace ${NAMESPACE} not found"
+else
+	${KUBECTL} delete namespace ${NAMESPACE}
+endif
 
-deploy:
-	${HELM} upgrade ${HELM_CHART} ./charts/${HELM_CHART}
+# Helm lint the chart
+helm-lint:
+	helm lint ${HELM_CHART}
 
-run-docker:
-	docker container run --rm -p 8008:8000 ${DOCKER_IMAGE_TAGGED}
+# Helm install the app service
+helm-install: create-namespace
+	${HELM} install -f ${HELM_VALUES_FILE} ${HELM_RELEASE} ${HELM_CHART}
+	@echo "Go to http://localhost:8080"
 
-run:
-	@echo "-------- run --------"
-	@echo "Forwarding ${POD_NAME} 8080:${CONTAINER_PORT}"
-	@echo "Visit http://localhost:8080 to use your application"
-	@echo "echo http://${NODE_IP}:${NODE_PORT}"
-	@echo "-------- run --------"
-	# kubectl --namespace ${NAMESPACE} port-forward ${POD_NAME} 8080:${CONTAINER_PORT}
+# Helm upgrade the app service
+helm-upgrade:
+	${HELM} upgrade -f ${HELM_VALUES_FILE} ${HELM_RELEASE} ${HELM_CHART}
+	@echo "Go to http://localhost:8080"
 
-lint:
-	helm lint ./charts/${HELM_CHART}
+# Helm uninstall the app service
+helm-uninstall:
+	${HELM} uninstall ${HELM_RELEASE}
 
-info: 
-	kubectl get all --namespace ${NAMESPACE}
+# Stats about the running service namespace
+stat-get:
+	${KUBECTL_NAMESPACE} get all -o wide
 
-	${SET_POD_NAME}
-	${SET_CONTAINER_PORT}
-	@echo "visit ${POD_NAME} ${CONTAINER_PORT}"
+# Stats about the running pod
+stat-pod:
+	${KUBECTL_NAMESPACE} describe pod $(shell ${KUBECTL_GET_POD_NAME})
 
-#   export POD_NAME=$(kubectl get pods --namespace default -l "app.kubernetes.io/name=app-fun,app.kubernetes.io/instance=app-fun" -o jsonpath="{.items[0].metadata.name}")
-#   export CONTAINER_PORT=$(kubectl get pod --namespace default $POD_NAME -o jsonpath="{.spec.containers[0].ports[0].containerPort}")
-#   echo "Visit http://127.0.0.1:8080 to use your application"
-#   kubectl --namespace default port-forward $POD_NAME 8080:$CONTAINER_PORT
+# Pod logs
+stat-logs:
+	${KUBECTL_NAMESPACE} logs $(shell ${KUBECTL_GET_POD_NAME})
 
-info-logs:
-	${SET_POD_NAME}
-	kubectl logs --namespace ${NAMESPACE} ${POD_NAME}
+# Stats about the running service
+stat: stat-get stat-pod
+	@echo "$$HELPER_FILE_TEXT" > /tmp/helpers.sh
+	@echo --------------------------------------
+	@echo Run this for helper functions:
+	@echo
+	@echo source /tmp/helpers.sh
 
-info-pod:
-	${SET_POD_NAME}
-	kubectl describe pod ${POD_NAME}
+# Build the docker container
+docker-build:
+	docker build --rm --tag ${DOCKER_IMAGE_TAGGED} -f Dockerfile .
 
-clean-docker:
-	docker image rm app-fun:latest
+# Run the container directly
+docker-run:
+	docker container run -d --rm --name ${DOCKER_CONTAINER_NAME} -p 9000:8000 ${DOCKER_IMAGE_TAGGED}
 
-# clean-k8s:
-# ifeq ($(shell kubectl get namespace | grep ${NAMESPACE}), 1)
-# 	@echo "Namespace '${NAMESPACE}' was deleted previously."
-# else
-# 	kubectl delete namespace ${NAMESPACE}
-# endif
+# Remove the container and image
+docker-stop:
+	docker container stop ${DOCKER_CONTAINER_NAME}
 
-clean-helm:
-	${HELM} uninstall ${HELM_CHART} 
+# Remove the docker image
+docker-clean:
+	docker container rm ${DOCKER_CONTAINER_NAME}
+	docker image rm ${DOCKER_IMAGE_TAGGED}
 
-clean: clean-helm clean-docker clean-k8s
+# Build and Install
+build: docker-build helm-install
+
+# Remove all changes
+clean: helm-uninstall delete-namespace # docker-clean

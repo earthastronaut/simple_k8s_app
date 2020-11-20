@@ -4,11 +4,9 @@ Creating an example web app with helm
 
 # Setup
 
-## local
-
-- `make install`
-- `make stat` when pod is ready go to `http://localhost:8080/`
-
+* `make build` - Will create docker image, install service via helm chart, and k8s namespace.
+* `make stat` - Statistics about the running service. Will also provide some helper function for debugging.
+* `make clean` - Deletes docker image, service via helm, and k8s namespace.
 
 ### Ingress on `docker-for-mac`
 
@@ -22,11 +20,4 @@ This should allow ingress on your local machine then you could set the ingress
 to true in the `deploy/local/values.yaml` file and set the service type back to
 `NodePort`.
 
-
 Note: ingress with traefic/maesh is probably a better solution in prod.
-
-
-# EXtra
-
-http://localhost:8080/api/v1/proxy/namespaces/<NAMESPACE>/services/<SERVICE-NAME>:<PORT-NAME>/
-http://localhost:8080/api/v1/namespaces/default/services/app-fun:http/

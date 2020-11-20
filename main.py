@@ -18,6 +18,7 @@ def read_root():
 def read_item(item_id: int, q: Optional[str] = None):
     return {"item_id": item_id, "q": q}
 
+
 @app.get("/health", status_code=200)
 def health_check():
     print('heathly check!')
