@@ -1,0 +1,22 @@
+image:
+  pullPolicy: IfNotPresent
+
+service:
+  # Using NodePort/ingress = true is more appropriate in prod; but installing
+  # ingress on the docker for mac is kind of a pain sooo...
+  type: LoadBalancer
+  port: 8080
+
+ingress:
+  enabled: false
+  annotations: {}
+  hosts:
+    - host: app-fun.local
+      paths:
+        - /
+    - host: localhost
+      paths:
+        - /
+  tls: []
+
+
