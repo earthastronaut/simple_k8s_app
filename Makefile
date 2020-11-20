@@ -4,8 +4,8 @@
 
 # defined
 APP_NAME=app-fun
-KUBE_CONTEXT=docker-desktop
-DOCKER_IMAGE=app-fun
+KUBE_CONTEXT=ml-v1-dashing-kit-context
+DOCKER_IMAGE=verdigristech/app-fun
 DOCKER_TAG=latest
 
 # commands
@@ -33,6 +33,9 @@ build-docker:
 		--tag ${DOCKER_IMAGE_TAGGED} \
 		-f Dockerfile \
 		.
+
+push-docker:
+	docker push ${DOCKER_IMAGE_TAGGED}
 
 build-helm:
 	# [ ! "$(kubectl get namespace | grep ${NAMESPACE})" ] && kubectl create namespace ${NAMESPACE}
@@ -64,7 +67,7 @@ info-logs:
 	kubectl logs --namespace ${NAMESPACE} ${POD_NAME}
 
 clean-docker:
-	docker image rm app-fun:latest
+	docker image rm ${DOCKER_IMAGE_TAGGED}
 
 clean-k8s:
 	[ "$(kubectl get namespace | grep ${NAMESPACE})" ] && kubectl delete namespace ${NAMESPACE}
