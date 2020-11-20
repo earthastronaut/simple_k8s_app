@@ -21,5 +21,9 @@ RUN pip install --no-cache-dir \
 
 COPY main.py .
 
-CMD [ "uvicorn", "--reload", "--host=localhost", "--port=8080", "main:app" ]
 EXPOSE 8080
+
+# VERY IMPORTANT: Host should not be 127.0.0.1 not localhost only 0.0.0.0 
+# I repeat, please use 0.0.0.0 if you want to avoid hours of wondering 
+# why your pod won't connect. You have been warned.
+CMD [ "uvicorn", "--reload", "--host=0.0.0.0", "--port=8080", "main:app" ]
