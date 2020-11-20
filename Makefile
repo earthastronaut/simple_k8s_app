@@ -100,7 +100,7 @@ docker-build:
 
 # Run the container directly
 docker-run:
-	docker container run -d --rm --name ${DOCKER_CONTAINER_NAME} -p 9000:8000 ${DOCKER_IMAGE_TAGGED}
+	docker container run -d --init --rm --name ${DOCKER_CONTAINER_NAME} -p 9000:8080 ${DOCKER_IMAGE_TAGGED}
 
 # Remove the container and image
 docker-stop:
